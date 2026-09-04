@@ -1,0 +1,30 @@
+{{- if .Values.clickhouseCluster.enabled }}
+apiVersion: clickhouse.com/v1alpha1
+kind: ClickHouseCluster
+metadata:
+  name: {{ include "bcrstracking.clickhouseClusterName" . }}
+  labels:
+    {{- include "bcrstracking.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.clickhouseCluster.cluster.replicas }}
+  shards: {{ .Values.clickhouseCluster.cluster.shards }}
+  keeperClusterRef:
+    name: {{ include "bcrstracking.clickhouseKeeperName" . }}
+  settings:
+    logger:
+      level: {{ .Values.clickhouseCluster.cluster.logLevel | default .Values.clickhouseCluster.logLevel | default "information" | quote }}
+  dataVolumeClaimSpec:
+    accessModes:
+      - ReadWriteOnce
+    {{- if .Values.clickhouseCluster.cluster.storageClassName }}
+    storageClassName: {{ .Values.clickhouseCluster.cluster.storageClassName }}
+    {{- end }}
+    resources:
+      requests:
+        storage: {{ .Values.clickhouseCluster.cluster.storage }}
+  {{- with .Values.clickhouseCluster.cluster.resources }}
+  containerTemplate:
+    resources:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Renovate configuration for BCRS Tracking service",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "labels": ["dependencies", "renovate"],
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "timezone": "Asia/Singapore",
+  "schedule": ["before 6am on monday"],
+  "prHourlyLimit": 5,
+  "prConcurrentLimit": 10,
+  "packageRules": [
+    {
+      "description": "Group Go module non-major updates together",
+      "matchDatasources": ["go"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go dependencies (non-major)"
+    },
+    {
+      "description": "Group Docker and CI base image updates together",
+      "matchDatasources": ["docker"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "container and CI image updates"
+    },
+    {
+      "description": "Group Helm dependencies and chart tooling",
+      "matchManagers": ["helm-values", "helmv3"],
+      "groupName": "helm dependencies"
+    },
+    {
+      "description": "Automerge patch and digest updates if tests pass",
+      "matchUpdateTypes": ["patch", "digest"],
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Match docker images in GitLab CI if not natively detected",
+      "managerFilePatterns": [
+        "/^\\.gitlab-ci\\.yml$/"
+      ],
+      "matchStrings": [
+        "image:\\s*(?:name:\\s*)?(?<depName>[^:\\s]+):(?<currentValue>[^\\s]+)"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

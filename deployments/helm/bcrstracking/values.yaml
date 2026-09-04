@@ -1,0 +1,104 @@
+replicaCount: 1
+
+image:
+  repository: ""
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart version.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 9090
+
+resources:
+  limits:
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 64Mi
+
+clickhouseCluster:
+  enabled: true
+  # Options: trace, debug, information, warning, error (Operator defaults to trace)
+  logLevel: "information"
+  keeper:
+    name: ""
+    replicas: 3
+    storage: 10Gi
+    storageClassName: ""
+    logLevel: "information"
+    resources:
+      limits:
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+  cluster:
+    name: ""
+    replicas: 2
+    shards: 1
+    storage: 50Gi
+    storageClassName: ""
+    logLevel: "information"
+    resources:
+      limits:
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+
+config:
+  baseUrl: "https://bts.bcrs.sg"
+  locationPollInterval: "15m"
+  binPollInterval: "5m"
+  binWorkerConcurrency: 8
+  rateLimitRps: 8.0
+  rateLimitBurst: 16
+  # If empty and clickhouseCluster.enabled is true, automatically resolves to the operator-managed cluster service.
+  clickhouseAddr: ""
+  clickhouseDatabase: "bcrs"
+  clickhouseUser: "default"
+  clickhouseBatchSize: 500
+  clickhouseFlushInterval: "5s"
+  logLevel: "info"
+
+secret:
+  clickhousePassword: ""
+
+victoriaMetrics:
+  serviceScrape:
+    enabled: true
+    interval: 15s
+  rules:
+    enabled: true
+    labels:
+      role: alert-rules
+
+grafana:
+  dashboard:
+    enabled: true
+    labels:
+      grafana_dashboard: "1"

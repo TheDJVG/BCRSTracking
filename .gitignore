@@ -1,0 +1,19 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.test
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Test & Coverage
+coverage.out
+coverage.html
+
+# Local Environment
+.env
+.env.local

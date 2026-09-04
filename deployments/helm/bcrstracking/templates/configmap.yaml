@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bcrstracking.fullname" . }}
+  labels:
+    {{- include "bcrstracking.labels" . | nindent 4 }}
+data:
+  BCRS_BASE_URL: {{ .Values.config.baseUrl | quote }}
+  LOCATION_POLL_INTERVAL: {{ .Values.config.locationPollInterval | quote }}
+  BIN_POLL_INTERVAL: {{ .Values.config.binPollInterval | quote }}
+  BIN_WORKER_CONCURRENCY: {{ .Values.config.binWorkerConcurrency | quote }}
+  RATE_LIMIT_RPS: {{ .Values.config.rateLimitRps | quote }}
+  RATE_LIMIT_BURST: {{ .Values.config.rateLimitBurst | quote }}
+  CLICKHOUSE_ADDR: {{ include "bcrstracking.clickhouseAddr" . | quote }}
+  CLICKHOUSE_DATABASE: {{ .Values.config.clickhouseDatabase | quote }}
+  CLICKHOUSE_USER: {{ .Values.config.clickhouseUser | quote }}
+  CLICKHOUSE_BATCH_SIZE: {{ .Values.config.clickhouseBatchSize | default 500 | quote }}
+  CLICKHOUSE_FLUSH_INTERVAL: {{ .Values.config.clickhouseFlushInterval | default "5s" | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  METRICS_PORT: {{ .Values.service.port | quote }}

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: bcrstracking
+description: Kubernetes Helm chart for BCRS Singapore Reverse Vending Machine Tracking
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Daan

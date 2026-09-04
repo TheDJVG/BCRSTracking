@@ -1,0 +1,16 @@
+{{- if .Values.victoriaMetrics.serviceScrape.enabled }}
+apiVersion: operator.victoriametrics.com/v1beta1
+kind: VMServiceScrape
+metadata:
+  name: {{ include "bcrstracking.fullname" . }}
+  labels:
+    {{- include "bcrstracking.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "bcrstracking.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.victoriaMetrics.serviceScrape.interval }}
+{{- end }}
