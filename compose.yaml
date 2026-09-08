@@ -1,0 +1,69 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.8-alpine
+    container_name: bcrs-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: bcrs
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - ch_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.151.0
+    container_name: bcrs-victoriametrics
+    ports:
+      - "8428:8428"
+    command:
+      - "-promscrape.config=/etc/victoriametrics/scrape.yaml"
+      - "-storageDataPath=/vmetrics-data"
+    volumes:
+      - ./deployments/victoriametrics/scrape.yaml:/etc/victoriametrics/scrape.yaml:ro
+      - vm_data:/vmetrics-data
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    container_name: bcrs-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deployments/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./deployments/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    depends_on:
+      - victoriametrics
+      - clickhouse
+
+  tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bcrs-tracker
+    ports:
+      - "9090:9090"
+    environment:
+      BCRS_BASE_URL: https://bts.bcrs.sg
+      LOCATION_POLL_INTERVAL: 15m
+      BIN_POLL_INTERVAL: 5m
+      BIN_WORKER_CONCURRENCY: 8
+      RATE_LIMIT_RPS: 8.0
+      CLICKHOUSE_ADDR: clickhouse:9000
+      CLICKHOUSE_DATABASE: bcrs
+      METRICS_PORT: 9090
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+volumes:
+  ch_data:
+  vm_data:

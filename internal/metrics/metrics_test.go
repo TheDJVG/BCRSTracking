@@ -18,6 +18,7 @@ func TestMetricsEndpoints(t *testing.T) {
 
 	m.RecordHTTPRequest("/locations", 200, 150*time.Millisecond)
 	m.RecordRateLimitBackoff("/locations/rvms/213/bin-status")
+	m.RecordAuthError("/locations")
 	m.SetRVMTotal("RUNNING", "SGRECYCLE001", "Red", 42)
 	m.RecordContainersIngested("PLASTIC", "TOMRA001", 15)
 	m.SetBinCurrentCount("PLASTIC", "TOMRA001", 120)
@@ -41,6 +42,9 @@ func TestMetricsEndpoints(t *testing.T) {
 	}
 	if !strings.Contains(body, "bcrs_rate_limit_backoffs_total") {
 		t.Errorf("missing bcrs_rate_limit_backoffs_total in metrics output")
+	}
+	if !strings.Contains(body, "bcrs_auth_errors_total") {
+		t.Errorf("missing bcrs_auth_errors_total in metrics output")
 	}
 	if !strings.Contains(body, "bcrs_containers_ingested_total") {
 		t.Errorf("missing bcrs_containers_ingested_total in metrics output")
@@ -160,6 +164,7 @@ func TestConcurrentRecording(t *testing.T) {
 			for j := 0; j < iterations; j++ {
 				m.RecordHTTPRequest("/locations", 200, time.Duration(j)*time.Millisecond)
 				m.RecordRateLimitBackoff("/locations")
+				m.RecordAuthError("/locations")
 				m.SetRVMTotal("RUNNING", "SUPP", "Green", float64(j))
 				m.RecordPollCycle("sync", 100*time.Millisecond, nil)
 				m.RecordClickHouseInsert("table", 10, 5*time.Millisecond, nil)

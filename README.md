@@ -35,12 +35,12 @@ A high-performance, cloud-native Go tracking service that monitors reverse vendi
 
 ## Architecture & Overview
 
-The BCRS Tracking Application continuously scrapes public upstream endpoints (`https://bts.bcrs.sg/api/v1/...`), computes differential state changes (machine added, updated, removed, status transitions), dispatches concurrent bin telemetry scrapes with token-bucket rate limiting, and batches writes to ClickHouse.
+The BCRS Tracking Application continuously scrapes public upstream endpoints (`https://bts.bcrs.sg/forapi/v2/...`), computes differential state changes (machine added, updated, removed, status transitions), dispatches concurrent bin telemetry scrapes with token-bucket rate limiting, and batches writes to ClickHouse.
 
 ```
                    ┌───────────────────────────────────────────────┐
                    │           Upstream BCRS Platform              │
-                   │             (bts.bcrs.sg/api/v1)              │
+                   │            (bts.bcrs.sg/forapi/v2)            │
                    └──────────────────────┬────────────────────────┘
                                           │
                                           │ Rate-Limited HTTP/2 (Token Bucket)
@@ -195,7 +195,7 @@ All settings are configured via standard 12-factor environment variables:
 
 | Variable | Default Value | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `BCRS_BASE_URL` | `https://bts.bcrs.sg` | Base URL of the upstream BCRS API | `https://bts.bcrs.sg` |
+| `BCRS_BASE_URL` | `https://bts.bcrs.sg` | Base URL of the upstream BCRS API (supports `https://bts.bcrs.sg` or `https://bts.bcrs.sg/forapi/v2`) | `https://bts.bcrs.sg` |
 | `LOCATION_POLL_INTERVAL` | `15m` | Interval between location directory poll cycles | `10m`, `30m` |
 | `BIN_POLL_INTERVAL` | `5m` | Interval between bin status poll cycles | `3m`, `5m` |
 | `BIN_WORKER_CONCURRENCY` | `8` | Number of concurrent bin scrape worker goroutines | `4`, `16` |
@@ -224,6 +224,7 @@ Exported on `http://<host>:9090/metrics`:
 | `bcrs_http_requests_total` | Counter | `endpoint`, `status_code` | Total HTTP requests sent to upstream BCRS APIs |
 | `bcrs_http_request_duration_seconds` | Histogram | `endpoint` | Upstream HTTP request latency distribution |
 | `bcrs_rate_limit_backoffs_total` | Counter | `endpoint` | Total HTTP 429 rate limit backoff events triggered |
+| `bcrs_auth_errors_total` | Counter | `endpoint` | Total 403 Forbidden authentication errors encountered |
 | `bcrs_rvm_total` | Gauge | `status`, `supplier`, `coords_color` | Current count of active RVMs grouped by status and supplier |
 | `bcrs_poll_cycle_duration_seconds` | Histogram | `type` (`locations`, `bins`) | Distribution of completed scrape cycle durations |
 | `bcrs_poll_cycle_last_duration_seconds` | Gauge | `type` (`locations`, `bins`) | Duration in seconds of the most recent scrape cycle |
@@ -289,10 +290,11 @@ Defined in [`deployments/helm/bcrstracking/templates/vmrule.yaml`](deployments/h
 
 1. **`BCRSPollCycleFailing`** (`severity: warning`): Poll cycle error count > 3 in 10 minutes.
 2. **`BCRSRateLimitExhausted`** (`severity: warning`): Scraper triggered > 5 rate limit backoff events in 10 minutes.
-3. **`BCRSClickHouseInsertErrors`** (`severity: critical`): ClickHouse batch writer encountered insertion errors in the last 5 minutes.
-4. **`BCRSBufferDepthHigh`** (`severity: warning`): Pending rows in ClickHouse batch buffer exceeds 1,000 items for > 2 minutes.
-5. **`BCRSUpstreamAPIFailing`** (`severity: warning`): Upstream BCRS API 5xx failure rate exceeds 10% over 5 minutes.
-6. **`BCRSScrapeStalled`** (`severity: critical`): Bin scrape cycle has not completed successfully for over 20 minutes.
+3. **`BCRSAuthErrors`** (`severity: warning`): Scraper encountered 403 Forbidden authentication errors from upstream BCRS API in the last 5 minutes.
+4. **`BCRSClickHouseInsertErrors`** (`severity: critical`): ClickHouse batch writer encountered insertion errors in the last 5 minutes.
+5. **`BCRSBufferDepthHigh`** (`severity: warning`): Pending rows in ClickHouse batch buffer exceeds 1,000 items for > 2 minutes.
+6. **`BCRSUpstreamAPIFailing`** (`severity: warning`): Upstream BCRS API 5xx failure rate exceeds 10% over 5 minutes.
+7. **`BCRSScrapeStalled`** (`severity: critical`): Bin scrape cycle has not completed successfully for over 20 minutes.
 
 ### Grafana Dashboard
 

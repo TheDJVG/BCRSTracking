@@ -15,6 +15,7 @@ type Metrics struct {
 	HTTPRequestsTotal        *prometheus.CounterVec
 	HTTPRequestDuration      *prometheus.HistogramVec
 	RateLimitBackoffsTotal   *prometheus.CounterVec
+	AuthErrorsTotal          *prometheus.CounterVec
 	RVMTotal                 *prometheus.GaugeVec
 	PollCycleDuration        *prometheus.HistogramVec
 	PollCycleLastDuration    *prometheus.GaugeVec
@@ -52,6 +53,13 @@ func New() *Metrics {
 			prometheus.CounterOpts{
 				Name: "bcrs_rate_limit_backoffs_total",
 				Help: "Total 429 rate limit backoff events triggered",
+			},
+			[]string{"endpoint"},
+		),
+		AuthErrorsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "bcrs_auth_errors_total",
+				Help: "Total 403 Forbidden authentication errors encountered",
 			},
 			[]string{"endpoint"},
 		),
@@ -140,6 +148,7 @@ func New() *Metrics {
 		m.HTTPRequestsTotal,
 		m.HTTPRequestDuration,
 		m.RateLimitBackoffsTotal,
+		m.AuthErrorsTotal,
 		m.RVMTotal,
 		m.PollCycleDuration,
 		m.PollCycleLastDuration,
@@ -169,6 +178,11 @@ func New() *Metrics {
 		}
 	}
 
+	for _, ep := range []string{"/locations", "/bin-status", "/locations/access-token"} {
+		m.AuthErrorsTotal.WithLabelValues(ep).Add(0)
+		m.RateLimitBackoffsTotal.WithLabelValues(ep).Add(0)
+	}
+
 	return m
 }
 
@@ -177,16 +191,28 @@ func (m *Metrics) Handler() http.Handler {
 }
 
 func (m *Metrics) RecordHTTPRequest(endpoint string, statusCode int, duration time.Duration) {
-	m.HTTPRequestsTotal.WithLabelValues(endpoint, strconv.Itoa(statusCode)).Inc()
-	m.HTTPRequestDuration.WithLabelValues(endpoint).Observe(duration.Seconds())
+	if m != nil && m.HTTPRequestsTotal != nil && m.HTTPRequestDuration != nil {
+		m.HTTPRequestsTotal.WithLabelValues(endpoint, strconv.Itoa(statusCode)).Inc()
+		m.HTTPRequestDuration.WithLabelValues(endpoint).Observe(duration.Seconds())
+	}
 }
 
 func (m *Metrics) RecordRateLimitBackoff(endpoint string) {
-	m.RateLimitBackoffsTotal.WithLabelValues(endpoint).Inc()
+	if m != nil && m.RateLimitBackoffsTotal != nil {
+		m.RateLimitBackoffsTotal.WithLabelValues(endpoint).Inc()
+	}
+}
+
+func (m *Metrics) RecordAuthError(endpoint string) {
+	if m != nil && m.AuthErrorsTotal != nil {
+		m.AuthErrorsTotal.WithLabelValues(endpoint).Inc()
+	}
 }
 
 func (m *Metrics) SetRVMTotal(status, supplier, coordsColor string, count float64) {
-	m.RVMTotal.WithLabelValues(status, supplier, coordsColor).Set(count)
+	if m != nil && m.RVMTotal != nil {
+		m.RVMTotal.WithLabelValues(status, supplier, coordsColor).Set(count)
+	}
 }
 
 func (m *Metrics) RecordPollCycle(pollType string, duration time.Duration, err error) {

@@ -17,3 +17,4 @@ coverage.html
 # Local Environment
 .env
 .env.local
+.agents

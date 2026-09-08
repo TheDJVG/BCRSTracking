@@ -180,9 +180,25 @@ func TestStateDiffEngine_ReAddedMachine(t *testing.T) {
 	}
 }
 
+func handleMockToken(w http.ResponseWriter, r *http.Request) bool {
+	if r.URL.Path == "/forapi/v2/locations/access-token" || strings.HasSuffix(r.URL.Path, "/access-token") {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(model.AccessTokenResponse{
+			Status:    "success",
+			Token:     "mock-token-xyz",
+			ExpiresAt: time.Now().Add(24 * time.Hour),
+		})
+		return true
+	}
+	return false
+}
+
 func TestPollLocations_Success(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/locations" {
+		if handleMockToken(w, r) {
+			return
+		}
+		if r.URL.Path != "/forapi/v2/locations" {
 			http.NotFound(w, r)
 			return
 		}
@@ -242,6 +258,9 @@ func TestPollLocations_Success(t *testing.T) {
 
 func TestPollLocations_Error(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handleMockToken(w, r) {
+			return
+		}
 		http.Error(w, "server down", http.StatusInternalServerError)
 	}))
 	defer server.Close()
@@ -288,8 +307,11 @@ func TestPollBins_WorkerPool(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handleMockToken(w, r) {
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/v1/locations" {
+		if r.URL.Path == "/forapi/v2/locations" {
 			resp := model.LocationsResponse{
 				Status: "success",
 				Data:   locs,
@@ -297,7 +319,7 @@ func TestPollBins_WorkerPool(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/api/v1/locations/rvms/") && strings.HasSuffix(r.URL.Path, "/bin-status") {
+		if strings.HasPrefix(r.URL.Path, "/forapi/v2/locations/rvms/") && strings.HasSuffix(r.URL.Path, "/bin-status") {
 			atomic.AddInt32(&requestedRVMs, 1)
 			resp := model.BinStatusResponse{
 				Status: "success",
@@ -357,16 +379,19 @@ func TestPollBins_PartialErrors(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/locations" {
+		if handleMockToken(w, r) {
+			return
+		}
+		if r.URL.Path == "/forapi/v2/locations" {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(model.LocationsResponse{Status: "success", Data: locs})
 			return
 		}
-		if r.URL.Path == "/api/v1/locations/rvms/1/bin-status" {
+		if r.URL.Path == "/forapi/v2/locations/rvms/1/bin-status" {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		if r.URL.Path == "/api/v1/locations/rvms/2/bin-status" {
+		if r.URL.Path == "/forapi/v2/locations/rvms/2/bin-status" {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(model.BinStatusResponse{
 				Status: "success",
@@ -418,7 +443,10 @@ func TestPollBins_ContextCancelled(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/locations" {
+		if handleMockToken(w, r) {
+			return
+		}
+		if r.URL.Path == "/forapi/v2/locations" {
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(model.LocationsResponse{Status: "success", Data: locs})
 			return
@@ -463,7 +491,10 @@ func TestPollBins_ContextCancelled(t *testing.T) {
 func TestPollLocations_GaugeResetOnStatusTransition(t *testing.T) {
 	currentStatus := "RUNNING"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/locations" {
+		if handleMockToken(w, r) {
+			return
+		}
+		if r.URL.Path != "/forapi/v2/locations" {
 			http.NotFound(w, r)
 			return
 		}
@@ -527,8 +558,11 @@ func TestPoller_StartLifecycle(t *testing.T) {
 	binPollCount := int32(0)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handleMockToken(w, r) {
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/v1/locations" {
+		if r.URL.Path == "/forapi/v2/locations" {
 			atomic.AddInt32(&locPollCount, 1)
 			resp := model.LocationsResponse{
 				Status: "success",
@@ -539,7 +573,7 @@ func TestPoller_StartLifecycle(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/api/v1/locations/rvms/") {
+		if strings.HasPrefix(r.URL.Path, "/forapi/v2/locations/rvms/") {
 			atomic.AddInt32(&binPollCount, 1)
 			resp := model.BinStatusResponse{
 				Status: "success",
@@ -598,8 +632,11 @@ func TestPoller_StartLifecycle(t *testing.T) {
 func TestContainerIngestionTracking(t *testing.T) {
 	var currentCount uint32 = 100
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if handleMockToken(w, r) {
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/api/v1/locations" {
+		if r.URL.Path == "/forapi/v2/locations" {
 			resp := model.LocationsResponse{
 				Status: "success",
 				Data: []model.RVM{
@@ -609,7 +646,7 @@ func TestContainerIngestionTracking(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
-		if r.URL.Path == "/api/v1/locations/rvms/1/bin-status" {
+		if r.URL.Path == "/forapi/v2/locations/rvms/1/bin-status" {
 			resp := model.BinStatusResponse{
 				Status: "success",
 				Data: []model.BinStatus{

@@ -30,6 +30,15 @@ spec:
             summary: "BCRS scraper rate limit exhausted"
             description: "Scraper has triggered > 5 rate limit backoff events in 10 minutes."
 
+        - alert: BCRSAuthErrors
+          expr: increase(bcrs_auth_errors_total[5m]) > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "BCRS authentication errors"
+            description: "Scraper is encountering 403 Forbidden authentication errors from upstream BCRS API."
+
         - alert: BCRSClickHouseInsertErrors
           expr: increase(bcrs_clickhouse_errors_total[5m]) > 0
           for: 1m

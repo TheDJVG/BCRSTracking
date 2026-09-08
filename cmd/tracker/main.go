@@ -102,7 +102,7 @@ func main() {
 	}
 	logger.Info("ClickHouse tables verified and initialized")
 
-	bcrsClient := client.New(cfg, m)
+	bcrsClient := client.New(cfg, m, client.WithLogger(logger))
 	pollService := poller.New(cfg, bcrsClient, store, m, logger)
 
 	go pollService.Start(ctx)
